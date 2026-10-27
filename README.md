@@ -98,6 +98,20 @@ Bring this project's Context Outline map, `.context-outline/root.json`, up to da
 
 </details>
 
+## Claude Code / Copilot (Terminal)
+
+The extension can start an AI CLI for you instead of copying prompts. Each one has its own setting under **Settings → Context Outline**:
+
+- **Claude Code (Terminal)**: Needs the [`claude`](https://claude.com/claude-code) CLI on your PATH. On by default.
+- **Copilot (Terminal)**: Needs the [GitHub Copilot CLI](https://github.com/github/copilot-cli) (`copilot`) on your PATH. On by default.
+
+For each one that's on:
+
+- **Build the Map with … (Terminal)** appears on the empty panel. It opens a terminal in the project and runs the CLI with the build prompt.
+- **More Detail Child Items with … (Terminal)** appears when you right-click an item. The AI reads that item's code and adds finer steps under it (prompt in `media/detail-prompt.md`), leaving the rest of the map alone.
+
+The tree reloads by itself when the AI saves `root.json`.
+
 ## root.json format
 
 ```json
@@ -130,6 +144,13 @@ The top node is the map itself: its `name`, with `basedOn` beside it and `summar
 
 ## Copy Context (for Claude Code, Copilot, any AI chat)
 
-Right-click an item and choose **Copy Context**. You can also use the copy icon on the item, or select it and press Cmd+C / Ctrl+C. The clipboard gets `context, indexed in .context-outline/root.json` on the first line, then the item's text exactly as written in `root.json`, including all its sub-steps.
+Right-click an item and choose **Copy Context**. You can also use the copy icon on the item, or select it and press Cmd+C / Ctrl+C. The clipboard gets:
 
-Hold Cmd/Ctrl or Shift to select several items and copy them together (one after another, with a blank line between).
+```
+context mapping from @.context-outline/root.json
+item: "3. the title of the item"
+```
+
+Paste it into Claude Code (the `@` makes it read the map) and the AI looks the item up in `root.json`.
+
+Hold Cmd/Ctrl or Shift to select several items and copy them together (one `item:` line each).

@@ -2,7 +2,7 @@
   "name": "context-outline",
   "displayName": "Context Outline",
   "description": "Browse a project's plain-English map (.context-outline/root.json) as a tree, and jump to the code behind each step.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "publisher": "phu-nguyen",
   "license": "MIT",
   "engines": {
@@ -35,15 +35,44 @@
       {
         "view": "contextOutline.tree",
         "contents": "No .context-outline/root.json found in this workspace.\nCopy a prompt, paste it into your AI tool (Claude Code, Copilot...) and it will build the map.\n[Copy Prompt to Build the Map](command:contextOutline.copyBuildPrompt)\n[Refresh](command:contextOutline.refresh)"
+      },
+      {
+        "view": "contextOutline.tree",
+        "contents": "Or let Claude Code build it in a terminal.\n[Build the Map with Claude Code (Terminal)](command:contextOutline.buildWithClaude)",
+        "when": "config.contextOutline.claudeCodeTerminal"
+      },
+      {
+        "view": "contextOutline.tree",
+        "contents": "Or let Copilot build it in a terminal.\n[Build the Map with Copilot (Terminal)](command:contextOutline.buildWithCopilot)",
+        "when": "config.contextOutline.copilotTerminal"
       }
     ],
+    "configuration": {
+      "title": "Context Outline",
+      "properties": {
+        "contextOutline.claudeCodeTerminal": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "**Claude Code (Terminal)**: show buttons that start Claude Code in a terminal with the prompt already filled in. Needs the `claude` CLI on your PATH."
+        },
+        "contextOutline.copilotTerminal": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "**Copilot (Terminal)**: show buttons that start GitHub Copilot CLI in a terminal with the prompt already filled in. Needs the `copilot` CLI on your PATH."
+        }
+      }
+    },
     "commands": [
       { "command": "contextOutline.refresh", "title": "Refresh", "icon": "$(refresh)" },
       { "command": "contextOutline.openMapFile", "title": "Open root.json", "icon": "$(json)" },
       { "command": "contextOutline.open", "title": "Open Code" },
       { "command": "contextOutline.copyContext", "title": "Copy Context", "icon": "$(copy)" },
       { "command": "contextOutline.copyBuildPrompt", "title": "Context Outline: Copy Prompt to Build the Map", "icon": "$(sparkle)" },
-      { "command": "contextOutline.copyReindexPrompt", "title": "Context Outline: Copy Prompt to Reindex the Map", "icon": "$(git-compare)" }
+      { "command": "contextOutline.copyReindexPrompt", "title": "Context Outline: Copy Prompt to Reindex the Map", "icon": "$(git-compare)" },
+      { "command": "contextOutline.buildWithClaude", "title": "Context Outline: Build the Map with Claude Code (Terminal)", "icon": "$(terminal)" },
+      { "command": "contextOutline.detailWithClaude", "title": "More Detail Child Items with Claude Code (Terminal)" },
+      { "command": "contextOutline.buildWithCopilot", "title": "Context Outline: Build the Map with Copilot (Terminal)", "icon": "$(terminal)" },
+      { "command": "contextOutline.detailWithCopilot", "title": "More Detail Child Items with Copilot (Terminal)" }
     ],
     "keybindings": [
       { "command": "contextOutline.copyContext", "key": "ctrl+c", "mac": "cmd+c", "when": "focusedView == contextOutline.tree" }
@@ -51,7 +80,9 @@
     "menus": {
       "view/item/context": [
         { "command": "contextOutline.copyContext", "when": "view == contextOutline.tree && viewItem =~ /^contextOutline/", "group": "1_copy@1" },
-        { "command": "contextOutline.copyContext", "when": "view == contextOutline.tree && viewItem =~ /^contextOutline/", "group": "inline" }
+        { "command": "contextOutline.copyContext", "when": "view == contextOutline.tree && viewItem =~ /^contextOutline/", "group": "inline" },
+        { "command": "contextOutline.detailWithClaude", "when": "view == contextOutline.tree && viewItem =~ /^contextOutline/ && config.contextOutline.claudeCodeTerminal", "group": "2_claude@1" },
+        { "command": "contextOutline.detailWithCopilot", "when": "view == contextOutline.tree && viewItem =~ /^contextOutline/ && config.contextOutline.copilotTerminal", "group": "2_claude@2" }
       ],
       "view/title": [
         { "command": "contextOutline.copyBuildPrompt", "when": "view == contextOutline.tree", "group": "navigation@0" },
@@ -60,7 +91,11 @@
         { "command": "contextOutline.refresh", "when": "view == contextOutline.tree", "group": "navigation@3" }
       ],
       "commandPalette": [
-        { "command": "contextOutline.open", "when": "false" }
+        { "command": "contextOutline.open", "when": "false" },
+        { "command": "contextOutline.buildWithClaude", "when": "config.contextOutline.claudeCodeTerminal" },
+        { "command": "contextOutline.detailWithClaude", "when": "false" },
+        { "command": "contextOutline.buildWithCopilot", "when": "config.contextOutline.copilotTerminal" },
+        { "command": "contextOutline.detailWithCopilot", "when": "false" }
       ]
     }
   }

@@ -2,6 +2,9 @@
 // Clicking an item opens its file and highlights its lines.
 const vscode = require('vscode');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const { execFileSync } = require('child_process');
 
 const MAP_PATH = path.join('.context-outline', 'root.json');
 
@@ -15,7 +18,7 @@ function parseLines(lines) {
 }
 
 class MapItem extends vscode.TreeItem {
-  constructor(node, folder, parent, jsonPath = []) {
+  constructor(node, folder, parent) {
     const hasChildren = Array.isArray(node.children) && node.children.length > 0;
     super(
       node.title || node.name || '(untitled)',
@@ -24,7 +27,6 @@ class MapItem extends vscode.TreeItem {
     this.node = node;
     this.folder = folder;
     this.parent = parent;
-    this.jsonPath = jsonPath; // where this node sits in root.json, e.g. ['children', 2, 'children', 0]
     this.contextValue = 'contextOutlineItem';
 
     const where = node.file
@@ -92,11 +94,11 @@ class MapProvider {
 
   getChildren(item) {
     if (item) {
-      return (item.node.children || []).map((c, i) => new MapItem(c, item.folder, item, [...item.jsonPath, 'children', i]));
+      return (item.node.children || []).map((c) => new MapItem(c, item.folder, item));
     }
     // One root node per map: its name, with summary and basedOn on hover.
     return this.roots.map(({ folder, data }) => {
-      const top = new MapItem(data, folder, undefined, []);
+      const top = new MapItem(data, folder, undefined);
       if (!data.name) top.label = folder.name;
       top.contextValue = 'contextOutlineRoot';
       top.description = data.basedOn || '';
@@ -139,86 +141,7 @@ async function openCode(uri, lines) {
   }
 }
 
-// ---- Find an item in root.json ----------------------------------------
-
-// Find where the value at `keys` (e.g. ['children', 2, 'children', 0]) starts
-// and ends in the JSON text, so the editor can jump to it.
-function locate(text, keys) {
-  let i = 0;
-  const ws = () => { while (i < text.length && /\s/.test(text[i])) i++; };
-  const str = () => {
-    const s = i++;
-    while (i < text.length && text[i] !== '"') i += text[i] === '\\' ? 2 : 1;
-    i++;
-    return JSON.parse(text.slice(s, i));
-  };
-  const skip = () => {
-    ws();
-    const c = text[i];
-    if (c === '"') return str();
-    if (c === '{' || c === '[') {
-      const close = c === '{' ? '}' : ']';
-      i++;
-      ws();
-      if (text[i] === close) { i++; return; }
-      for (;;) {
-        if (c === '{') { ws(); str(); ws(); i++; } // key and ':'
-        skip();
-        ws();
-        if (text[i] === ',') { i++; continue; }
-        i++;
-        return;
-      }
-    }
-    while (i < text.length && !/[\s,}\]]/.test(text[i])) i++;
-  };
-  ws();
-  for (const k of keys) {
-    const c = text[i++];
-    if (typeof k === 'number') {
-      if (c !== '[') return undefined;
-      for (let n = 0; ; n++) {
-        ws();
-        if (text[i] === ']' || i >= text.length) return undefined;
-        if (n === k) break;
-        skip();
-        ws();
-        if (text[i] === ',') i++;
-      }
-    } else {
-      if (c !== '{') return undefined;
-      for (;;) {
-        ws();
-        if (text[i] === '}' || i >= text.length) return undefined;
-        const key = str();
-        ws();
-        i++; // ':'
-        ws();
-        if (key === k) break;
-        skip();
-        ws();
-        if (text[i] === ',') i++;
-      }
-    }
-  }
-  const start = i;
-  skip();
-  return { start, end: i };
-}
-
 const MAP_REF = MAP_PATH.split(path.sep).join('/');
-
-function mapUri(item) {
-  return vscode.Uri.joinPath(item.folder.uri, MAP_PATH);
-}
-
-function safeLocate(text, jsonPath) {
-  try {
-    return locate(text, jsonPath);
-  } catch {
-    return undefined;
-  }
-}
 
 function selectFirst() {
   vscode.window.showInformationMessage('Context Outline: select an item first.');
@@ -226,22 +149,11 @@ function selectFirst() {
 
 // ---- Copy Context -------------------------------------------------------
 
-// Each item's text exactly as written in root.json (same formatting, with
-// all sub-steps), under a "context, indexed in .context-outline/root.json" header.
-async function contextBlock(items) {
-  const texts = new Map(); // folder uri -> root.json text
-  const blocks = [];
-  for (const item of items) {
-    const key = item.folder.uri.toString();
-    if (!texts.has(key)) {
-      texts.set(key, Buffer.from(await vscode.workspace.fs.readFile(mapUri(item))).toString('utf8'));
-    }
-    const text = texts.get(key);
-    const loc = safeLocate(text, item.jsonPath);
-    // Fall back to re-serialising the node if root.json changed under us.
-    blocks.push(loc ? text.slice(loc.start, loc.end) : JSON.stringify(item.node, null, 2));
-  }
-  return `context, indexed in ${MAP_REF}\n${blocks.join('\n\n')}`;
+// context mapping from @.context-outline/root.json
+// item: "3. the title of the item"
+function contextBlock(items) {
+  const lines = items.map((item) => `item: "${item.label}"`);
+  return `context mapping from @${MAP_REF}\n${lines.join('\n')}`;
 }
 
 async function copyContext(clicked, selected) {
@@ -249,7 +161,7 @@ async function copyContext(clicked, selected) {
   let items = selected && selected.length ? selected : clicked ? [clicked] : [];
   if (clicked && !items.includes(clicked)) items = [clicked];
   if (!items.length) return selectFirst();
-  await vscode.env.clipboard.writeText((await contextBlock(items)) + '\n');
+  await vscode.env.clipboard.writeText(contextBlock(items) + '\n');
   vscode.window.setStatusBarMessage(`Context Outline: copied ${items.length} item${items.length > 1 ? 's' : ''}`, 3000);
 }
 
@@ -257,11 +169,124 @@ async function copyContext(clicked, selected) {
 
 // Copies one of the bundled prompts (media/*.md) for an AI tool:
 // build-prompt.md creates .context-outline/root.json, reindex-prompt.md updates it.
-async function copyPrompt(context, fileName) {
+async function readPrompt(context, fileName) {
   const uri = vscode.Uri.joinPath(context.extensionUri, 'media', fileName);
-  const prompt = Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8');
-  await vscode.env.clipboard.writeText(prompt);
+  return Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8');
+}
+
+async function copyPrompt(context, fileName) {
+  await vscode.env.clipboard.writeText(await readPrompt(context, fileName));
   vscode.window.showInformationMessage('Context Outline: prompt copied. Paste it into Claude Code, Copilot or any AI tool opened on your project.');
+}
+
+// ---- AI CLIs in a terminal (Claude Code, Copilot) -----------------------
+
+const TOOLS = {
+  claude: {
+    label: 'Claude Code',
+    setting: 'claudeCodeTerminal',
+    defaultOn: true,
+    bin: 'claude',
+    extraDirs: (home) => [path.join(home, '.claude', 'local')],
+    args: (prompt) => [prompt],
+  },
+  copilot: {
+    label: 'Copilot',
+    setting: 'copilotTerminal',
+    defaultOn: true,
+    bin: 'copilot',
+    extraDirs: () => [],
+    // -i starts the interactive session and runs the prompt right away.
+    args: (prompt) => ['-i', prompt],
+  },
+};
+
+function toolEnabled(tool) {
+  return vscode.workspace.getConfiguration('contextOutline').get(tool.setting, tool.defaultOn);
+}
+
+// VS Code's PATH often misses where CLIs live (e.g. ~/.local/bin is only
+// added by the shell's rc files), so find the full path ourselves.
+const cliPaths = {};
+function findCli(tool) {
+  const cached = cliPaths[tool.bin];
+  if (cached && fs.existsSync(cached)) return cached;
+  const names = process.platform === 'win32' ? [`${tool.bin}.exe`, `${tool.bin}.cmd`] : [tool.bin];
+  const home = os.homedir();
+  const dirs = [
+    ...(process.env.PATH || '').split(path.delimiter),
+    path.join(home, '.local', 'bin'),
+    ...tool.extraDirs(home),
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+  ];
+  for (const dir of dirs) {
+    for (const name of names) {
+      const p = dir && path.join(dir, name);
+      if (p && fs.existsSync(p)) return (cliPaths[tool.bin] = p);
+    }
+  }
+  // Last try: ask the user's login shell, which loads their PATH setup.
+  if (process.platform !== 'win32') {
+    try {
+      const shell = process.env.SHELL || '/bin/zsh';
+      const out = execFileSync(shell, ['-lic', `command -v ${tool.bin}`], { encoding: 'utf8', timeout: 5000 });
+      const p = out.trim().split('\n').pop();
+      if (p && fs.existsSync(p)) return (cliPaths[tool.bin] = p);
+    } catch {
+      // not found
+    }
+  }
+  return undefined;
+}
+
+// Runs the CLI as the terminal's own process, so the prompt is passed as one
+// argument with no shell quoting to worry about.
+function runTool(tool, folder, prompt) {
+  const cli = findCli(tool);
+  if (!cli) {
+    vscode.window.showErrorMessage(
+      `Context Outline: could not find the \`${tool.bin}\` CLI. Install ${tool.label}, then try again.`
+    );
+    return;
+  }
+  const term = vscode.window.createTerminal({
+    name: tool.label,
+    cwd: folder.uri,
+    shellPath: cli,
+    shellArgs: tool.args(prompt),
+  });
+  term.show();
+}
+
+async function buildWith(context, tool) {
+  if (!toolEnabled(tool)) return;
+  const folders = vscode.workspace.workspaceFolders || [];
+  if (!folders.length) {
+    vscode.window.showInformationMessage('Context Outline: open a folder first.');
+    return;
+  }
+  const folder = folders.length > 1 ? await vscode.window.showWorkspaceFolderPick() : folders[0];
+  if (!folder) return;
+  runTool(tool, folder, await readPrompt(context, 'build-prompt.md'));
+}
+
+// Titles from the top of the map down to this item: "A" > "B" > "C".
+function itemPath(item) {
+  const titles = [];
+  for (let it = item; it; it = it.parent) titles.unshift(`"${it.node.title || it.node.name || it.label}"`);
+  return titles.join(' > ');
+}
+
+async function detailWith(context, tool, item) {
+  if (!toolEnabled(tool)) return;
+  if (!item) return selectFirst();
+  const { file, lines } = item.node;
+  const where = file ? `Its code: ${file}${lines ? ':' + lines : ''}` : '';
+  const prompt = (await readPrompt(context, 'detail-prompt.md'))
+    .replace('{{PATH}}', itemPath(item))
+    .replace('{{WHERE}}', where);
+  runTool(tool, item.folder, prompt);
 }
 
 async function activate(context) {
@@ -279,6 +304,14 @@ async function activate(context) {
     vscode.commands.registerCommand('contextOutline.open', openCode),
     vscode.commands.registerCommand('contextOutline.copyBuildPrompt', () => copyPrompt(context, 'build-prompt.md')),
     vscode.commands.registerCommand('contextOutline.copyReindexPrompt', () => copyPrompt(context, 'reindex-prompt.md')),
+    vscode.commands.registerCommand('contextOutline.buildWithClaude', () => buildWith(context, TOOLS.claude)),
+    vscode.commands.registerCommand('contextOutline.detailWithClaude', (clicked) =>
+      detailWith(context, TOOLS.claude, clicked || view.selection[0])
+    ),
+    vscode.commands.registerCommand('contextOutline.buildWithCopilot', () => buildWith(context, TOOLS.copilot)),
+    vscode.commands.registerCommand('contextOutline.detailWithCopilot', (clicked) =>
+      detailWith(context, TOOLS.copilot, clicked || view.selection[0])
+    ),
     // From the right-click menu VS Code passes (clicked, selected); from the
     // keybinding it passes nothing, so fall back to the view's selection.
     vscode.commands.registerCommand('contextOutline.copyContext', (clicked, selected) =>

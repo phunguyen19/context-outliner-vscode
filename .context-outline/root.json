@@ -1,0 +1,94 @@
+{
+  "name": "context-outline-vscode",
+  "summary": "This VS Code extension displays a project's .context-outline/root.json as a sidebar tree and lets users open the source behind each map item. It can copy AI prompts and context references, or launch Claude Code and Copilot CLI in a terminal to build or expand the map.",
+  "basedOn": "main @ c92f8a2",
+  "children": [
+    {
+      "title": "1. VS Code activates when a workspace already has a map",
+      "file": "package.json",
+      "lines": "12-15",
+      "children": [
+        { "title": "Create the Context Outline sidebar and Project Map view", "file": "package.json", "lines": "16-33" },
+        { "title": "Offer map-building actions when no map exists", "file": "package.json", "lines": "34-48" },
+        { "title": "Let users disable either terminal AI integration", "file": "package.json", "lines": "50-64" }
+      ]
+    },
+    {
+      "title": "2. The extension builds and keeps the project map tree current",
+      "file": "extension.js",
+      "lines": "292-335",
+      "children": [
+        {
+          "title": "Read root.json from every workspace folder",
+          "file": "extension.js",
+          "lines": "67-89",
+          "children": [
+            { "title": "Skip folders with no map or an empty map", "file": "extension.js", "lines": "70-78" },
+            { "title": "Warn when a map contains invalid JSON", "file": "extension.js", "lines": "79-88" }
+          ]
+        },
+        {
+          "title": "Show each map root expanded with its summary and revision",
+          "file": "extension.js",
+          "lines": "95-109",
+          "children": [
+            { "title": "Use the folder name when the map has no name", "file": "extension.js", "lines": "100-106" }
+          ]
+        },
+        { "title": "Turn each map node into a clickable tree item", "file": "extension.js", "lines": "20-57" },
+        { "title": "Reload when a map is changed, created, deleted, or workspace folders change", "file": "extension.js", "lines": "325-335" }
+      ]
+    },
+    {
+      "title": "3. Clicking a map item opens and highlights its source",
+      "file": "extension.js",
+      "lines": "117-142",
+      "children": [
+        { "title": "Accept one line or a line range and convert it to editor positions", "file": "extension.js", "lines": "12-18" },
+        { "title": "Show an error instead of opening a missing file", "file": "extension.js", "lines": "118-124" },
+        { "title": "Clamp requested lines to the end of the document and highlight them", "file": "extension.js", "lines": "125-141" }
+      ]
+    },
+    {
+      "title": "4. Users can copy the selected map context or bundled AI prompts",
+      "children": [
+        {
+          "title": "Copy one or more selected item titles as map references",
+          "file": "extension.js",
+          "lines": "154-166",
+          "children": [
+            { "title": "Prefer the multi-selection and include the right-clicked item if needed", "file": "extension.js", "lines": "159-163" },
+            { "title": "Ask users to select an item before copying", "file": "extension.js", "lines": "146-148" }
+          ]
+        },
+        { "title": "Read a bundled prompt and copy it to the clipboard", "file": "extension.js", "lines": "172-180" },
+        { "title": "Expose copy, prompt, refresh, and open-map commands in the tree", "file": "extension.js", "lines": "300-324" }
+      ]
+    },
+    {
+      "title": "5. Users can run an AI CLI in the chosen project folder",
+      "children": [
+        {
+          "title": "Define Claude Code and Copilot launch arguments",
+          "file": "extension.js",
+          "lines": "184-206",
+          "children": [
+            { "title": "Start Copilot interactively with the prompt", "file": "extension.js", "lines": "193-200" }
+          ]
+        },
+        {
+          "title": "Find and cache the CLI before starting a terminal",
+          "file": "extension.js",
+          "lines": "210-241",
+          "children": [
+            { "title": "Search PATH, common install directories, and tool-specific directories", "file": "extension.js", "lines": "212-228" },
+            { "title": "Use the login shell as a final non-Windows lookup", "file": "extension.js", "lines": "229-240" }
+          ]
+        },
+        { "title": "Show an install error when the requested CLI cannot be found", "file": "extension.js", "lines": "245-260" },
+        { "title": "Build a map in the only folder or ask users to choose among folders", "file": "extension.js", "lines": "262-272" },
+        { "title": "Give the AI the clicked item's full path and source location for detail requests", "file": "extension.js", "lines": "274-290" }
+      ]
+    }
+  ]
+}
