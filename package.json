@@ -1,0 +1,55 @@
+{
+  "name": "ctxdev",
+  "displayName": "ctxdev",
+  "description": "Browse a project's plain-English map (.ctxdev/root.json) as a tree, and jump to the code behind each step.",
+  "version": "0.1.0",
+  "publisher": "phu-nguyen",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": ["Other"],
+  "main": "./extension.js",
+  "activationEvents": [
+    "workspaceContains:.ctxdev/root.json"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ctxdev",
+          "title": "ctxdev",
+          "icon": "media/tree.svg"
+        }
+      ]
+    },
+    "views": {
+      "ctxdev": [
+        {
+          "id": "ctxdev.tree",
+          "name": "Project Map"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "ctxdev.tree",
+        "contents": "No .ctxdev/root.json found in this workspace.\n[Refresh](command:ctxdev.refresh)"
+      }
+    ],
+    "commands": [
+      { "command": "ctxdev.refresh", "title": "Refresh", "icon": "$(refresh)" },
+      { "command": "ctxdev.openMapFile", "title": "Open root.json", "icon": "$(json)" },
+      { "command": "ctxdev.open", "title": "Open Code" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "ctxdev.openMapFile", "when": "view == ctxdev.tree", "group": "navigation@1" },
+        { "command": "ctxdev.refresh", "when": "view == ctxdev.tree", "group": "navigation@3" }
+      ],
+      "commandPalette": [
+        { "command": "ctxdev.open", "when": "false" }
+      ]
+    }
+  }
+}
