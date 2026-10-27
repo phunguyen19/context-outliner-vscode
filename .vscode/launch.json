@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run ctxdev",
+      "name": "Run Context Outline",
       "type": "extensionHost",
       "request": "launch",
       "args": [

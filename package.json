@@ -1,8 +1,8 @@
 {
-  "name": "ctxdev",
-  "displayName": "ctxdev",
-  "description": "Browse a project's plain-English map (.ctxdev/root.json) as a tree, and jump to the code behind each step.",
-  "version": "0.1.0",
+  "name": "context-outline",
+  "displayName": "Context Outline",
+  "description": "Browse a project's plain-English map (.context-outline/root.json) as a tree, and jump to the code behind each step.",
+  "version": "0.3.0",
   "publisher": "phu-nguyen",
   "license": "MIT",
   "engines": {
@@ -11,44 +11,56 @@
   "categories": ["Other"],
   "main": "./extension.js",
   "activationEvents": [
-    "workspaceContains:.ctxdev/root.json"
+    "workspaceContains:.context-outline/root.json"
   ],
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "ctxdev",
-          "title": "ctxdev",
+          "id": "contextOutline",
+          "title": "Context Outline",
           "icon": "media/tree.svg"
         }
       ]
     },
     "views": {
-      "ctxdev": [
+      "contextOutline": [
         {
-          "id": "ctxdev.tree",
+          "id": "contextOutline.tree",
           "name": "Project Map"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "ctxdev.tree",
-        "contents": "No .ctxdev/root.json found in this workspace.\n[Refresh](command:ctxdev.refresh)"
+        "view": "contextOutline.tree",
+        "contents": "No .context-outline/root.json found in this workspace.\nCopy a prompt, paste it into your AI tool (Claude Code, Copilot...) and it will build the map.\n[Copy Prompt to Build the Map](command:contextOutline.copyBuildPrompt)\n[Refresh](command:contextOutline.refresh)"
       }
     ],
     "commands": [
-      { "command": "ctxdev.refresh", "title": "Refresh", "icon": "$(refresh)" },
-      { "command": "ctxdev.openMapFile", "title": "Open root.json", "icon": "$(json)" },
-      { "command": "ctxdev.open", "title": "Open Code" }
+      { "command": "contextOutline.refresh", "title": "Refresh", "icon": "$(refresh)" },
+      { "command": "contextOutline.openMapFile", "title": "Open root.json", "icon": "$(json)" },
+      { "command": "contextOutline.open", "title": "Open Code" },
+      { "command": "contextOutline.copyContext", "title": "Copy Context", "icon": "$(copy)" },
+      { "command": "contextOutline.copyBuildPrompt", "title": "Context Outline: Copy Prompt to Build the Map", "icon": "$(sparkle)" },
+      { "command": "contextOutline.copyReindexPrompt", "title": "Context Outline: Copy Prompt to Reindex the Map", "icon": "$(git-compare)" }
+    ],
+    "keybindings": [
+      { "command": "contextOutline.copyContext", "key": "ctrl+c", "mac": "cmd+c", "when": "focusedView == contextOutline.tree" }
     ],
     "menus": {
+      "view/item/context": [
+        { "command": "contextOutline.copyContext", "when": "view == contextOutline.tree && viewItem =~ /^contextOutline/", "group": "1_copy@1" },
+        { "command": "contextOutline.copyContext", "when": "view == contextOutline.tree && viewItem =~ /^contextOutline/", "group": "inline" }
+      ],
       "view/title": [
-        { "command": "ctxdev.openMapFile", "when": "view == ctxdev.tree", "group": "navigation@1" },
-        { "command": "ctxdev.refresh", "when": "view == ctxdev.tree", "group": "navigation@3" }
+        { "command": "contextOutline.copyBuildPrompt", "when": "view == contextOutline.tree", "group": "navigation@0" },
+        { "command": "contextOutline.copyReindexPrompt", "when": "view == contextOutline.tree", "group": "navigation@0" },
+        { "command": "contextOutline.openMapFile", "when": "view == contextOutline.tree", "group": "navigation@1" },
+        { "command": "contextOutline.refresh", "when": "view == contextOutline.tree", "group": "navigation@3" }
       ],
       "commandPalette": [
-        { "command": "ctxdev.open", "when": "false" }
+        { "command": "contextOutline.open", "when": "false" }
       ]
     }
   }
